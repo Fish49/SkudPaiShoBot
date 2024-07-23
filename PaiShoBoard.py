@@ -309,60 +309,42 @@ class Board():
             self.turnNumber += 1
 
     def makeMoveFromString(self, string: str, click=False):
-        print(string)
-        list1 = string.split('.')
-        isHost = list1[0][-1] == 'H'
-        isPlant = list1[1][0] != '('
-        harmonyTile = None
-        harmonyCord = None
-        extraHarmonyCord = None
+        import re
 
-        if isPlant:
-            list2 = list1[1].split('(')
-            list2[1] = list2[1].replace(')', '')
-            list3 = list2[1].split(',')
+        Pcord = r'\(-?\d,-?\d\)'
+        PbasicFlower = r'[RW][345]'
+        PaccentChoice = r'([RWKB],?){4}'
+        PharmonyPlant = r'[RWKBLO]' + Pcord
+        Pbeginning = r'\d+[GH]'
 
-            plantString = list2[0]
-            cord = (int(list3[0]), int(list3[1]))
+        moveInfo = {
+            'isHost': None,
+            'turnNumber': None,
+            'type': None, #accentChoice, plant, or arrange.
+            'relaventTile': None, #list of accents for accentChoice, code (ex. 'R3') for planting, or cordinate (ex. (2, 1)) for arrange
+            'moveCord': None,
+            'harmonyBonusTile': None,
+            'harmonyBonusCord': None,
+            'harmonyBonusExtraCord': None
+        }
 
-            tile = self.getMatchingTileFromReserve(BasicFlower(isHost, int(plantString[1]), (plantString[0] == 'W'), None))
+        if not re.match(f'{Pbeginning}\\.(({PbasicFlower}{Pcord})|({Pcord}-{Pcord}\\+({PharmonyPlant}(-{Pcord})?)?)|({PaccentChoice}))$', string):
+            return 'Not a valid notation'
+
+        focusList = re.split(r'\.', string)
+        moveInfo['isHost'] = focusList[0][1] == 'H'
+        moveInfo['turnNumber'] = int(focusList[0][0])
+        print(focusList)
+
+        focusString = focusList[1]
+        if re.match(PaccentChoice + '$', focusString):
+            moveInfo['type'] = 'accentChoice'
+
+        elif re.match(PbasicFlower + Pcord + '$', focusString):
+            moveInfo['type'] = 'plant'
 
         else:
-            if '+' in list1[1]:
-                list2 = list1[1].split('+')
-                list3 = list2[1].split('(')
-                list3[1] = list3[1].replace(')', '').replace('-', '')
-                list4 = list3[1].split(',')
-
-                if len(list3) == 3:
-                    list3[2] = list3[2].replace(')', '')
-                    list5 = list3[2].split(',')
-                    extraHarmonyCord = (int(list5[0]), int(list5[1]))
-
-                harmonyString = list3[0]
-                harmonyCord = (int(list4[0]), int(list4[1]))
-
-                if len(harmonyString) == 2:
-                    harmonyTile = self.getMatchingTileFromReserve(BasicFlower(isHost, int(harmonyString[1]), (harmonyString[0] == 'W'), None))
-                elif harmonyString[0] in 'RWKB':
-                    harmonyTile = self.getMatchingTileFromReserve(Accent(isHost, 'RWKB'.index(harmonyString[0]), None))
-                elif harmonyString[0] in 'OL':
-                    harmonyTile = self.getMatchingTileFromReserve(SpecialFlower(isHost, (harmonyString[0] == 'O'), None))
-
-            else:
-                list2 = [list1[1]]
-
-            list3 = list2[0].split('(')
-            list3 = list3[1:]
-            list3[0] = list3[0].replace(')-', '')
-            list3[1] = list3[1].replace(')', '')
-            print(list3)
-
-            list4 = list3[1].split(',')
-            cord = (int(list4[0]), int(list4[1]))
-
-            list4 = list3[0].split(',')
-            tile = self.getTileAtCord((int(list4[0]), int(list4[1])))
+            moveInfo['type'] = 'arrange'
 
         self.makeMove(tile, cord, harmonyTile, harmonyCord, extraHarmonyCord, click=click)
 
@@ -452,4 +434,4 @@ class Board():
         sleep(sleepTime)
 
 if __name__ == '__main__':
-    b = Board.fromGameLog('', 'gameStuff/SkudPaiShoSolver/gameNotation1.txt', True)
+    b = Board.fromGameLog('', 'exampleGames/gameNotation1.txt', True)
