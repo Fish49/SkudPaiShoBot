@@ -321,8 +321,8 @@ class Board():
             'isHost': None,
             'turnNumber': None,
             'type': None, #accentChoice, plant, or arrange.
-            'relaventTile': None, #list of accents for accentChoice, code (ex. 'R3') for planting, or cordinate (ex. (2, 1)) for arrange
-            'moveCord': None,
+            'tile': None, #code (ex. 'R3') for planting, or cordinate (ex. (2, 1)) for arrange
+            'cord': None,
             'harmonyBonusTile': None,
             'harmonyBonusCord': None,
             'harmonyBonusExtraCord': None
@@ -340,13 +340,45 @@ class Board():
         if re.match(PaccentChoice + '$', focusString):
             moveInfo['type'] = 'accentChoice'
 
+            for i in self.getAccentsReserve(moveInfo['isHost']):
+                self.reserve.remove(i)
+
+            for i in re.split('\\.', focusString):
+                self.reserve.append(Accent(moveInfo['isHost'], 'RWKB'.index(i), None))
+
         elif re.match(PbasicFlower + Pcord + '$', focusString):
             moveInfo['type'] = 'plant'
+
+            focusList = list(map(lambda x: int(x), re.split(',', re.sub('[()]', '', re.search(Pcord)))))
+
+            moveInfo['tile'] = self.getMatchingTileFromReserve(BasicFlower(moveInfo['isHost'], int(focusString[1]), (focusString[0] == 'W'), None))
+            moveInfo['cord'] = tuple(focusList)
 
         else:
             moveInfo['type'] = 'arrange'
 
-        self.makeMove(tile, cord, harmonyTile, harmonyCord, extraHarmonyCord, click=click)
+            if '+' in focusString:
+                focusList = focusString.split('+')
+
+                focusString = focusList[1]
+                if focusString[0] in 'OL':
+                    moveInfo['harmonyBonusTile'] = self.getMatchingTileFromReserve(SpecialFlower(moveInfo['isHost'], (focusString[0] == 'O'), None))
+                else:
+                    moveInfo['harmonyBonusTile'] = self.getMatchingTileFromReserve(Accent(moveInfo['isHost'], 'RWKB'.index(focusString[0]), None))
+
+                harmonyList = re.findall(Pcord, focusString)
+                moveInfo['harmonyBonusCord'] = tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', harmonyList[0]))))
+
+                if len(harmonyList) == 2:
+                    moveInfo['harmonyBonusExtraCord'] = tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', harmonyList[1]))))
+
+                focusString = focusList[0]
+            
+            focusList = re.findall(Pcord, focusString)
+            moveInfo['tile'] = self.getTileAtCord(tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', focusList[0])))))
+            moveInfo['cord'] = tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', focusList[1]))))
+
+        self.makeMove(moveInfo['tile'], moveInfo['cord'], moveInfo['harmonyBonusTile'], moveInfo['harmonyBonusCord'], moveInfo['harmonyBonusExtraCord'], click=click)
 
     def tileToScreen(self, tile: Tile, origin = (660, 540), squareSize = 34, tileStartX = 975, tileEndX=1185, minUndDepth = 280, gap1 = 8, gap2 = 16, gap3 = 28, gap4 = 28, click = True, sleepTime=1):
         from pynput import mouse
