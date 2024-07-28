@@ -15,6 +15,13 @@ def absDiff(a, b):
 def distance(cord):
     return math.sqrt((cord[0]**2)+(cord[1]**2))
 
+def removeExact(iter: list, item):
+    for i, j in enumerate(iter):
+        if j is item:
+            iter.pop(i)
+            return True
+    return False
+
 class Tile():
     def __init__(self, isHost, moveNumber, cordinate) -> None:
         self.isHost: bool = isHost
@@ -130,7 +137,7 @@ class Board():
 
             for j in [False, True]:
                 for k in [3, 4, 5]:
-                    reserve.extend([BasicFlower(i, k, j, None)] * 3)
+                    reserve.extend([BasicFlower(i, k, j, None) for l in range(3)])
 
             if relevantAccents == None:
                 for j in [0, 1, 2, 3]:
@@ -142,36 +149,22 @@ class Board():
                 reserve.append(SpecialFlower(i, j, None))
 
         return Board(reserve, [])
-    
+
     @staticmethod
     def fromGameLog(log: str = '', file = None, click=False):
+        if click:
+            from keyboard import hook_key, unhook_all
+            hook_key('e', exit)
+
         if file != None:
             with open(file, 'r') as f:
                 log = f.read()
 
-        board = None
-        hostAccents = []
-        guestAccents = []
+        board = Board.new()
         for i in log.splitlines():
-            if i[0] == '0':
-                list1 = i[3:].split(',')
-                for j in list1:
-                    if i[1] == 'H':
-                        hostAccents.append(Accent(True, Accent.accentAbbrvs.index(j), None))
-                    else:
-                        guestAccents.append(Accent(False, Accent.accentAbbrvs.index(j), None))
+            board.makeMoveFromString(i, click)
 
-            else:
-                if board == None:
-                    if hostAccents == []:
-                        hostAccents = None
-                    if guestAccents == []:
-                        guestAccents = None
-
-                    board = Board.new(hostAccents, guestAccents)
-
-                board.makeMoveFromString(i, click)
-
+        unhook_all()
         return board
 
     def getReserve(self, isHost) -> list[Tile]:
@@ -190,7 +183,7 @@ class Board():
                     accents.append(i)
 
         return accents
-    
+
     def getMatchingTileFromReserve(self, tile, count = False, index = False):
         num = 0
         for g, i in enumerate(self.reserve):
@@ -267,7 +260,7 @@ class Board():
                     self.tileToScreen(Tile(True, 0, harmonyBonusExtraCord))
 
         if tile.cordinate == None:
-            self.reserve.remove(tile)
+            removeExact(self.reserve, tile)
             tile.cordinate = newCord
             self.tiles.append(tile)
             logStr += str(tile)
@@ -314,7 +307,7 @@ class Board():
         Pcord = r'\(-?\d,-?\d\)'
         PbasicFlower = r'[RW][345]'
         PaccentChoice = r'([RWKB],?){4}'
-        PharmonyPlant = r'[RWKBLO]' + Pcord
+        PharmonyPlant = r'([RWKBLO]|'+ PbasicFlower + ')' + Pcord
         Pbeginning = r'\d+[GH]'
 
         moveInfo = {
@@ -328,13 +321,22 @@ class Board():
             'harmonyBonusExtraCord': None
         }
 
-        if not re.match(f'{Pbeginning}\\.(({PbasicFlower}{Pcord})|({Pcord}-{Pcord}\\+({PharmonyPlant}(-{Pcord})?)?)|({PaccentChoice}))$', string):
+        if string == '':
+            return
+
+        if string[0] == '#':
+            # comments
+            return
+
+        print(string)
+
+        if not re.match(f'{Pbeginning}\\.(({PbasicFlower}{Pcord})|({Pcord}-{Pcord}(\\+{PharmonyPlant}{Pcord}(-{Pcord})?)?)|({PaccentChoice}))$', string):
+            print('Not a valid notation')
             return 'Not a valid notation'
 
         focusList = re.split(r'\.', string)
         moveInfo['isHost'] = focusList[0][1] == 'H'
         moveInfo['turnNumber'] = int(focusList[0][0])
-        print(focusList)
 
         focusString = focusList[1]
         if re.match(PaccentChoice + '$', focusString):
@@ -343,13 +345,15 @@ class Board():
             for i in self.getAccentsReserve(moveInfo['isHost']):
                 self.reserve.remove(i)
 
-            for i in re.split('\\.', focusString):
+            for i in re.split(',', focusString):
                 self.reserve.append(Accent(moveInfo['isHost'], 'RWKB'.index(i), None))
+
+            return
 
         elif re.match(PbasicFlower + Pcord + '$', focusString):
             moveInfo['type'] = 'plant'
 
-            focusList = list(map(lambda x: int(x), re.split(',', re.sub('[()]', '', re.search(Pcord)))))
+            focusList = list(map(lambda x: int(x), re.split(',', re.sub('[()]', '', re.findall(Pcord, focusString)[0]))))
 
             moveInfo['tile'] = self.getMatchingTileFromReserve(BasicFlower(moveInfo['isHost'], int(focusString[1]), (focusString[0] == 'W'), None))
             moveInfo['cord'] = tuple(focusList)
@@ -373,7 +377,7 @@ class Board():
                     moveInfo['harmonyBonusExtraCord'] = tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', harmonyList[1]))))
 
                 focusString = focusList[0]
-            
+
             focusList = re.findall(Pcord, focusString)
             moveInfo['tile'] = self.getTileAtCord(tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', focusList[0])))))
             moveInfo['cord'] = tuple(map(lambda x: int(x), re.split(',', re.sub('[()]', '', focusList[1]))))
@@ -382,10 +386,6 @@ class Board():
 
     def tileToScreen(self, tile: Tile, origin = (660, 540), squareSize = 34, tileStartX = 975, tileEndX=1185, minUndDepth = 280, gap1 = 8, gap2 = 16, gap3 = 28, gap4 = 28, click = True, sleepTime=1):
         from pynput import mouse
-        from keyboard import hook_key
-
-        hook_key('esc')
-
         cont = mouse.Controller()
 
         if tile.cordinate == None:
@@ -431,7 +431,6 @@ class Board():
                             if currentDepth > guestDepth:
                                 guestDepth = currentDepth
 
-            print(f'host:{hostDepth}, guest:{guestDepth}')
             Yoffset = 0
             Xind = 0
             relavantDepth = hostDepth
@@ -466,4 +465,4 @@ class Board():
         sleep(sleepTime)
 
 if __name__ == '__main__':
-    b = Board.fromGameLog('', 'exampleGames/gameNotation1.txt', True)
+    b = Board.fromGameLog('', 'exampleGames/CannoliVsGyatso.txt', True)
