@@ -120,6 +120,22 @@ class Board():
             return 'G'
         return 'N'
 
+    @staticmethod
+    def isClashing(tile1: Tile, tile2: Tile):
+        if not (isinstance(tile1, BasicFlower) and isinstance(tile2, BasicFlower)):
+            return False
+
+        if (tile1.cordinate[0] != tile2.cordinate[0]) and (tile1.cordinate[1] != tile2.cordinate[1]):
+            return False
+
+        if tile1.isWhite == tile2.isWhite:
+            return False
+
+        if tile1.moveNumber != tile2.moveNumber:
+            return False
+
+        return True
+
     def __init__(self, reserve, tiles) -> None:
         self.reserve: list[Tile] = reserve
         self.tiles: list[Tile] = tiles
@@ -223,26 +239,12 @@ class Board():
 
         return None
 
-    def isPlantValid(self, tile, newCord):
-        if not newCord in Board.gates:
-            return False
-
-        if isinstance(tile, Accent):
-            return False
-
-        if self.getTileAtCord(newCord) != None:
-            return False
-
-        if not tile in self.reserve:
-            return False
-
-        return True
-
     def isMoveValid(self, tile: Tile, newCord, harmonyBonusTile = None, harmonyBonusCord = None, harmonyBonusExtraCord = None):
-        isPlanting = False
         if tile.cordinate == None:
-            isPlanting = True
             if harmonyBonusTile != None:
+                return False
+
+            if not (newCord in Board.gates):
                 return False
 
     def makeMove(self, tile: Tile, newCord, harmonyBonusTile = None, harmonyBonusCord = None, harmonyBonusExtraCord = None, click = False):
