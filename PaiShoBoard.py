@@ -136,6 +136,31 @@ class Board():
 
         return True
 
+    @staticmethod
+    def isHarmonious(tile1: Tile, tile2: Tile):
+        if (tile1.cordinate[0] != tile2.cordinate[0]) and (tile1.cordinate[1] != tile2.cordinate[1]):
+            return False
+
+        if not isinstance(tile1, BasicFlower):
+            if (isinstance(tile1, SpecialFlower)) and (not tile1.isOrchid):
+                return True
+            return False
+
+        if not isinstance(tile2, BasicFlower):
+            if (isinstance(tile2, SpecialFlower)) and (not tile2.isOrchid):
+                return True
+            return False
+
+        if not (tile1.isHost == tile2.isHost):
+            return False
+
+        tileVal1 = tile1.moveNumber + (3 if tile1.isWhite else 0)
+        tileVal2 = tile2.moveNumber + (3 if tile2.isWhite else 0)
+
+        if not (abs(tileVal1 - tileVal2) in (5, 1)):
+            return False
+        return True
+
     def __init__(self, reserve, tiles) -> None:
         self.reserve: list[Tile] = reserve
         self.tiles: list[Tile] = tiles
@@ -467,4 +492,6 @@ class Board():
         sleep(sleepTime)
 
 if __name__ == '__main__':
-    b = Board.fromGameLog('', 'exampleGames/CannoliVsGyatso.txt', True)
+    # b = Board.fromGameLog('', 'exampleGames/CannoliVsGyatso.txt', True)
+    print(Board.isHarmonious(BasicFlower(True, 5, False, (-1, 0)), BasicFlower(True, 3, True, (1, 0))))
+    print(Board.isHarmonious(BasicFlower(True, 5, False, (-1, 0)), SpecialFlower(False, False, (1, 0))))
